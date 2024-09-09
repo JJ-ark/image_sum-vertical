@@ -3,8 +3,8 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 # 폰트 경로 설정
-NOTO_SANS_KR_PATH = "C:/Users/Admin/OneDrive/바탕 화면/Coding/viewbot/Noto_Sans_KR/NotoSansKR-Regular.otf"
-ROBOTO_PATH = "C:/Users/Admin/OneDrive/바탕 화면/Coding/viewbot/Noto_Sans_KR/Roboto-Regular.ttf"
+NOTO_SANS_KR_PATH = r"NotoSansKR-Bold.ttf"
+ROBOTO_PATH = r"Roboto-Bold.ttf"
 
 def process_images(folder_path, top_text, bottom_text):
     # 이미지 파일을 불러오기
@@ -20,35 +20,55 @@ def process_images(folder_path, top_text, bottom_text):
         img = img.resize((780, 780))  # 이미지 크기를 780x780으로 변환
         images.append(img)
 
+    # 폰트 크기 100 (4배)
+    font_size = 100
+    font = ImageFont.truetype(NOTO_SANS_KR_PATH, font_size)
+
+    # 텍스트 높이 계산
+    dummy_img = Image.new('RGB', (1, 1))
+    draw = ImageDraw.Draw(dummy_img)
+    
+    # 상단 텍스트 높이 계산
+    top_text_height = 0
+    if top_text:
+        bbox = draw.textbbox((0, 0), top_text, font=font)
+        top_text_height = bbox[3] - bbox[1]
+
+    # 하단 텍스트 높이 계산
+    bottom_text_height = 0
+    if bottom_text:
+        bbox = draw.textbbox((0, 0), bottom_text, font=font)
+        bottom_text_height = bbox[3] - bbox[1]
+
+    # 텍스트 영역을 고려한 이미지 높이 계산
+    total_image_height = sum(img.height for img in images)
+    total_height = total_image_height + top_text_height + bottom_text_height + 100  # 여백을 위한 추가 공간
+
     # 이미지 세로로 합치기
-    total_height = sum(img.height for img in images)
     combined_image = Image.new('RGB', (780, total_height), (255, 255, 255))  # 새로운 빈 이미지 생성
 
-    y_offset = 0
-    for img in images:
-        combined_image.paste(img, (0, y_offset))  # 이미지를 세로로 붙이기
-        y_offset += img.height
-
-    # 상단과 하단에 텍스트 추가
+    # 상단 텍스트 추가
     draw = ImageDraw.Draw(combined_image)
+    y_offset = 0
 
-    # 폰트 설정
-    font = ImageFont.truetype(NOTO_SANS_KR_PATH, 25)
-
-    # 상단 텍스트 추가 (중앙 정렬)
     if top_text:
         bbox = draw.textbbox((0, 0), top_text, font=font)
         text_width = bbox[2] - bbox[0]
         top_text_x = (combined_image.width - text_width) // 2
-        draw.text((top_text_x, 10), top_text, font=font, fill=(0, 0, 0))
+        draw.text((top_text_x, y_offset + 10), top_text, font=font, fill=(0, 0, 0))
+        y_offset += top_text_height + 50  # 여백 추가
 
-    # 하단 텍스트 추가 (중앙 정렬)
+    # 이미지들 추가
+    for img in images:
+        combined_image.paste(img, (0, y_offset))  # 이미지를 세로로 붙이기
+        y_offset += img.height
+
+    # 하단 텍스트 추가
     if bottom_text:
         bbox = draw.textbbox((0, 0), bottom_text, font=font)
         text_width = bbox[2] - bbox[0]
-        text_height = bbox[3] - bbox[1]
         bottom_text_x = (combined_image.width - text_width) // 2
-        draw.text((bottom_text_x, total_height - text_height - 10), bottom_text, font=font, fill=(0, 0, 0))
+        draw.text((bottom_text_x, y_offset + 10), bottom_text, font=font, fill=(0, 0, 0))
 
     # 결과 이미지 저장
     combined_image.save(os.path.join(folder_path, "combined_image_with_text.jpg"))
